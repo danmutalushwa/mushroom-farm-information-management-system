@@ -1,0 +1,28 @@
+# Dependency Cache (Never upload this folder)   
+node_modules/
+
+# Local Environment Variables & Secrets (CRITICAL SECURITY GUARD)
+.env
+.env.local
+.env.development
+.env.production
+.env.encrypted
+
+# File Upload Temporary Storage (Prevents crowding your cloud repo)
+server/uploads/
+uploads/
+
+# Application Logs 
+logs/
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Production Builds & Testing Code Coverage
+coverage/
+dist/
+build/
+
+# Local IDE Cache Settings Files
+.vscode/
+.DS_Store
