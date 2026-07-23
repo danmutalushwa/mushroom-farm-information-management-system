@@ -20,8 +20,17 @@ export const customerAPI = {
   // Get customer by code
   getByCode: (code) => api.get(`/customers/code/${code}`),
 
-  // Create new customer
-  create: (data) => api.post('/customers', data),
+  // FIXED: Create new customer - Uses auth endpoint
+  create: (data) => {
+    // For admin-created customers, send to auth endpoint
+    // This will create both Customer and User accounts
+    return api.post('/auth/register-customer', data)
+  },
+
+  // NEW: Public registration (for signup page)
+  publicRegister: (data) => {
+    return api.post('/auth/public-register-customer', data)
+  },
 
   // Update customer
   update: (id, data) => api.put(`/customers/${id}`, data),

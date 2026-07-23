@@ -16,7 +16,8 @@ const RegisterCustomer = () => {
     email: '',
     address: '',
     customerType: 'Individual',
-    password: ''
+    password: '',  
+    createdBy: null
   })
 
   const handleChange = (e) => {
@@ -34,7 +35,17 @@ const RegisterCustomer = () => {
     setSuccess('')
 
     try {
-      await api.post('/auth/register-customer', formData)
+      //Clean data before sending
+      const payload = {
+        ...formData,
+        // Convert empty strings to null for backend compatibility
+        email: formData.email || null,
+        address: formData.address || null,
+        // Explicitly set createdBy to null for public registration
+        createdBy: null
+      }
+
+      await api.post('/auth/register-customer', payload)
 
       setSuccess('Registration successful! Please login.')
 
@@ -51,7 +62,6 @@ const RegisterCustomer = () => {
     }
   }
 
-
   return (
     <div className="min-h-screen flex bg-white">
 
@@ -64,65 +74,46 @@ const RegisterCustomer = () => {
         />
       </div>
 
-
       {/* Right Side - Form */}
       <div className="w-full md:w-1/2 flex items-center justify-center px-8 py-12 lg:px-20">
 
         <div className="w-full max-w-md">
 
-
           {/* Logo */}
           <div className="mb-8">
-
             <div className="flex items-center gap-3 mb-3">
-
-              {/* <div className="w-12 h-12 gradient-bg rounded-xl flex items-center justify-center text-white font-bold">
-                🌱
-              </div> */}
-
               <span className="text-2xl font-bold text-gray-800">
                 Sign
                 <span className="text-emerald-600">
                    Up
                 </span>
               </span>
-
             </div>
-
 
             <p className="text-gray-500">
               Create your account
             </p>
-
           </div>
 
-
-
-          {/* Error */}
+          {/* Error Message */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm mb-5">
               {error}
             </div>
           )}
 
-
-
-          {/* Success */}
+          {/* Success Message */}
           {success && (
             <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg text-sm mb-5">
               {success}
             </div>
           )}
 
-
-
           {/* Form */}
           <form
             onSubmit={handleSubmit}
             className="space-y-4"
           >
-
-
             {/* Full Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -140,9 +131,7 @@ const RegisterCustomer = () => {
               />
             </div>
 
-
-
-            {/* Phone */}
+            {/* Phone Number */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Phone Number *
@@ -159,8 +148,6 @@ const RegisterCustomer = () => {
               />
             </div>
 
-
-
             {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -175,9 +162,10 @@ const RegisterCustomer = () => {
                 placeholder="johnsmith@example.com"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
               />
+              <p className="text-xs text-gray-400 mt-1">
+                Optional - You can skip this
+              </p>
             </div>
-
-
 
             {/* Address */}
             <div>
@@ -193,9 +181,10 @@ const RegisterCustomer = () => {
                 placeholder="Kigali, Rwanda"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
               />
+              <p className="text-xs text-gray-400 mt-1">
+                Optional - You can skip this
+              </p>
             </div>
-
-
 
             {/* Customer Type */}
             <div>
@@ -209,35 +198,18 @@ const RegisterCustomer = () => {
                 onChange={handleChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                <option value="Individual">
-                  Individual
-                </option>
-
-                <option value="Business">
-                  Business
-                </option>
-
-                <option value="Wholesaler">
-                  Wholesaler
-                </option>
-
-                <option value="Retailer">
-                  Retailer
-                </option>
-
+                <option value="Individual">Individual</option>
+                <option value="Business">Business</option>
+                <option value="Wholesaler">Wholesaler</option>
+                <option value="Retailer">Retailer</option>
               </select>
-
             </div>
-
-
 
             {/* Password */}
             <div>
-
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Password *
               </label>
-
 
               <input
                 type="password"
@@ -250,75 +222,28 @@ const RegisterCustomer = () => {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
               />
 
-
               <p className="text-xs text-gray-400 mt-1">
                 Must be at least 6 characters
               </p>
-
             </div>
 
-
-
-
-            {/* Button */}
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
               className="w-full gradient-bg text-white font-semibold py-3 rounded-lg hover:opacity-90 transition disabled:opacity-50"
             >
-
               {
                 loading
-                ? <i className="fas fa-spinner fa-spin"></i>
-                : "Create Account"
+                  ? <i className="fas fa-spinner fa-spin"></i>
+                  : "Create Account"
               }
-
             </button>
-
 
           </form>
 
-
-
-
-          {/* Divider */}
-          {/* <div className="relative my-8">
-
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
-            </div>
-
-
-            <div className="relative flex justify-center">
-              <span className="bg-white px-4 text-sm text-gray-500">
-                or
-              </span>
-            </div>
-
-          </div> */}
-
-
-
-
-          {/* Google */}
-          {/* <button
-            type="button"
-            className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 font-medium text-gray-700 hover:bg-gray-50 transition"
-          >
-
-            <svg className="w-5 h-5" viewBox="0 0 48 48">
-            </svg>
-
-            Sign up with Google
-
-          </button> */}
-
-
-
-
-          {/* Login */}
+          {/* Login Link */}
           <div className="mt-8 text-center text-sm text-gray-500">
-
             Already have an account?{' '}
 
             <Link
@@ -327,18 +252,14 @@ const RegisterCustomer = () => {
             >
               Sign In
             </Link>
-
           </div>
-
 
         </div>
 
       </div>
 
-
     </div>
   )
 }
-
 
 export default RegisterCustomer

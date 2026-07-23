@@ -64,11 +64,25 @@ class AuthService {
     }
 
     /**
-     * Register a new customer
-     * FIXED: Dynamically accepts createdBy parameter properties for administrative dashboards
+     * Register a new customer (Admin only)
+     * FIXED: Properly handles admin-created customers
      */
     async registerCustomer(customerData) {
-        const { fullName, phoneNumber, email, address, customerType, password, createdBy } = customerData;
+        const { 
+            fullName, 
+            phoneNumber, 
+            email, 
+            address, 
+            customerType, 
+            password, 
+            createdBy,
+            notes 
+        } = customerData;
+
+        // Validate required fields
+        if (!fullName || !phoneNumber) {
+            throw new AppError('Full name and phone number are required', 400);
+        }
 
         // Validate email (if provided)
         if (email && !isEmailValid(email)) {
@@ -80,6 +94,16 @@ class AuthService {
             throw new AppError('Please enter a valid phone number', 400);
         }
 
+        // Validate password if provided
+        if (password && password.length < 6) {
+            throw new AppError('Password must be at least 6 characters', 400);
+        }
+
+        // Clean data - convert empty strings to null
+        const cleanEmail = email || null;
+        const cleanAddress = address || null;
+        const cleanCreatedBy = createdBy || null;
+
         // Check if customer exists by phone
         const existingCustomer = await Customer.findOne({ phoneNumber });
         if (existingCustomer) {
@@ -87,41 +111,136 @@ class AuthService {
         }
 
         // Check if user exists by email (if provided)
-        if (email) {
-            const existingUser = await User.findOne({ email });
+        if (cleanEmail) {
+            const existingUser = await User.findOne({ email: cleanEmail });
             if (existingUser) {
                 throw new AppError('Email already in use', 400);
             }
         }
 
-        // Create customer
+        // Create customer with cleaned data
         const customer = await Customer.create({
             fullName,
             phoneNumber,
-            email: email || null,
-            address: address || null,
+            email: cleanEmail,
+            address: cleanAddress,
             customerType: customerType || 'Individual',
-            // FIXED: Dynamically tracks the administrator creator or defaults to null for public portals
-            createdBy: createdBy || null 
+            notes: notes || null,
+            createdBy: cleanCreatedBy
         });
+
+        // Generate unique email for user if not provided
+        const userEmail = cleanEmail || `${phoneNumber.replace(/[^0-9]/g, '')}@customer.temp`;
+
+        // Use provided password or default
+        const finalPassword = password || 'Customer@123';
 
         // Create user account for customer
         const user = await User.create({
             fullName,
-            email: email || `${phoneNumber}@customer.temp`,
+            email: userEmail,
             phoneNumber,
-            password: password || 'Customer@123', // Should be changed on first login
+            password: finalPassword,
             role: ROLES.CUSTOMER,
             customerId: customer._id,
-            isActive: true
+            isActive: true 
         });
 
-        logger.info(`Customer registered: ${customer.fullName}`, { 
+        logger.info(`Customer registered by admin: ${customer.fullName}`, { 
+            customerId: customer._id,
+            userId: user._id,
+            createdBy: cleanCreatedBy || 'System'
+        });
+
+        // Don't generate token for admin-created customers
+        return {
+            user: this.sanitizeUser(user), 
+            customer: customer,
+            message: 'Customer created successfully'
+        };
+    }
+
+    /**
+     * Public customer registration (no admin required)
+     */
+    async publicRegisterCustomer(customerData) {
+        const { 
+            fullName, 
+            phoneNumber, 
+            email, 
+            address, 
+            customerType, 
+            password 
+        } = customerData;
+
+        // Validate required fields
+        if (!fullName || !phoneNumber || !password) {
+            throw new AppError('Full name, phone number and password are required', 400);
+        }
+
+        // Validate email (if provided)
+        if (email && !isEmailValid(email)) {
+            throw new AppError('Please enter a valid email address', 400);
+        }
+
+        // Validate phone
+        if (!isPhoneValid(phoneNumber)) {
+            throw new AppError('Please enter a valid phone number', 400);
+        }
+
+        // Validate password
+        if (password.length < 6) {
+            throw new AppError('Password must be at least 6 characters', 400);
+        }
+
+        // Clean data - convert empty strings to null
+        const cleanEmail = email || null;
+        const cleanAddress = address || null;
+
+        // Check if customer exists by phone
+        const existingCustomer = await Customer.findOne({ phoneNumber });
+        if (existingCustomer) {
+            throw new AppError('Customer with this phone number already exists', 400);
+        }
+
+        // Check if user exists by email (if provided)
+        if (cleanEmail) {
+            const existingUser = await User.findOne({ email: cleanEmail });
+            if (existingUser) {
+                throw new AppError('Email already in use', 400);
+            }
+        }
+
+        // Create customer with cleaned data
+        const customer = await Customer.create({
+            fullName,
+            phoneNumber,
+            email: cleanEmail,
+            address: cleanAddress,
+            customerType: customerType || 'Individual',
+            createdBy: null // Public registration has no admin
+        });
+
+        // Generate unique email for user if not provided
+        const userEmail = cleanEmail || `${phoneNumber.replace(/[^0-9]/g, '')}@customer.temp`;
+
+        // Create user account for customer
+        const user = await User.create({
+            fullName,
+            email: userEmail,
+            phoneNumber,
+            password: password,
+            role: ROLES.CUSTOMER,
+            customerId: customer._id,
+            isActive: true 
+        });
+
+        logger.info(`Customer registered publicly: ${customer.fullName}`, { 
             customerId: customer._id,
             userId: user._id
         });
 
-        // Generate token
+        // Generate token for public registration
         const token = generateToken({
             id: user._id,
             email: user.email,
