@@ -10,13 +10,18 @@ const RegisterCustomer = () => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // State for showing/hiding passwords
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
   const [formData, setFormData] = useState({
     fullName: '',
     phoneNumber: '',
     email: '',
     address: '',
     customerType: 'Individual',
-    password: '',  
+    password: '',
+    confirmPassword: '',
     createdBy: null
   })
 
@@ -27,31 +32,62 @@ const RegisterCustomer = () => {
     })
   }
 
+  // Toggle password visibility
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword)
+  }
+
+  // Toggle confirm password visibility
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    // Validate password length
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
 
     setLoading(true)
     setError('')
     setSuccess('')
 
     try {
-      //Clean data before sending
-      const payload = {
-        ...formData,
-        // Convert empty strings to null for backend compatibility
-        email: formData.email || null,
-        address: formData.address || null,
-        // Explicitly set createdBy to null for public registration
-        createdBy: null
+      // Clean data before sending
+      const { confirmPassword, ...payload } = formData
+      
+      // Convert empty strings to null for backend compatibility
+      payload.email = payload.email || null
+      payload.address = payload.address || null
+      // Explicitly set createdBy to null for public registration
+      payload.createdBy = null
+
+      const response = await api.post('/auth/public-register-customer', payload)
+
+      // Auto-login after registration (if token is returned)
+      if (response.data.data?.token) {
+        // Store token and redirect to dashboard
+        localStorage.setItem('token', response.data.data.token)
+        setSuccess('Registration successful! Redirecting...')
+        setTimeout(() => {
+          navigate('/dashboard')
+        }, 1500)
+      } else {
+        // Just show success message and redirect to login
+        setSuccess('Registration successful! Please login.')
+        setTimeout(() => {
+          navigate('/login')
+        }, 2000)
       }
-
-      await api.post('/auth/register-customer', payload)
-
-      setSuccess('Registration successful! Please login.')
-
-      setTimeout(() => {
-        navigate('/login')
-      }, 2000)
 
     } catch (error) {
       setError(
@@ -205,26 +241,83 @@ const RegisterCustomer = () => {
               </select>
             </div>
 
-            {/* Password */}
+            {/* Password with Show/Hide Toggle */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Password *
               </label>
 
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-                minLength="6"
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  minLength="6"
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 pr-12"
+                />
+                
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-lg`}></i>
+                </button>
+              </div>
 
               <p className="text-xs text-gray-400 mt-1">
                 Must be at least 6 characters
               </p>
+            </div>
+
+            {/* Confirm Password with Show/Hide Toggle */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Confirm Password *
+              </label>
+
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Confirm password"
+                  minLength="6"
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 pr-12"
+                />
+                
+                <button
+                  type="button"
+                  onClick={toggleConfirmPasswordVisibility}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                >
+                  <i className={`fas ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'} text-lg`}></i>
+                </button>
+              </div>
+
+              {/* Real-time password match validation */}
+              {formData.confirmPassword && (
+                <div className="mt-1">
+                  {formData.password !== formData.confirmPassword ? (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                      <i className="fas fa-exclamation-circle"></i>
+                      Passwords do not match
+                    </p>
+                  ) : (
+                    <p className="text-xs text-green-500 flex items-center gap-1">
+                      <i className="fas fa-check-circle"></i>
+                      Passwords match
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Submit Button */}
