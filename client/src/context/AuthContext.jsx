@@ -1,11 +1,119 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../api/axios';
 import { jwtDecode } from 'jwt-decode';
 
-// Create Auth Context
-const AuthContext = createContext();
+// 1. Centralized role definitions mirroring your backend precisely
+export const ROLES = {
+    ADMIN: 'Administrator',
+    PRODUCTION_SUPERVISOR: 'Production Supervisor',
+    INVENTORY_OFFICER: 'Inventory Officer',
+    SALES_OFFICER: 'Sales Officer',
+    FARM_WORKER: 'Farm Worker',
+    CUSTOMER: 'Customer'  
+};
 
-// Custom hook to use auth context
+// 2. Client-side Permission Maps mirroring your backend authorization matrices
+export const ROLE_PERMISSIONS = {
+    [ROLES.ADMIN]: {
+        canManageUsers: true,
+        canManageRoles: true,
+        canManageProduction: true,
+        canManageInventory: true,
+        canManageCustomers: true,
+        canManageOrders: true,
+        canManageSales: true,
+        canManageReports: true,
+        canManageSettings: true,
+        canViewAuditLogs: true,
+        canManageNotifications: true,
+        canManageSystem: true,
+        canViewAllData: true,
+        canAccessDashboard: true
+    },
+    [ROLES.PRODUCTION_SUPERVISOR]: {
+        canManageUsers: false,
+        canManageRoles: false,
+        canManageProduction: true,
+        canManageInventory: false,
+        canManageCustomers: false,
+        canManageOrders: false,
+        canManageSales: false,
+        canManageReports: true,
+        canManageSettings: false,
+        canViewAuditLogs: false,
+        canManageNotifications: false,
+        canManageSystem: false,
+        canViewAllData: false,
+        canAccessDashboard: true
+    },
+    [ROLES.INVENTORY_OFFICER]: {
+        canManageUsers: false,
+        canManageRoles: false,
+        canManageProduction: false,
+        canManageInventory: true,
+        canManageCustomers: false,
+        canManageOrders: false,
+        canManageSales: false,
+        canManageReports: true,
+        canManageSettings: false,
+        canViewAuditLogs: false,
+        canManageNotifications: false,
+        canManageSystem: false,
+        canViewAllData: false,
+        canAccessDashboard: true
+    },
+    [ROLES.SALES_OFFICER]: {
+        canManageUsers: false,
+        canManageRoles: false,
+        canManageProduction: false,
+        canManageInventory: false,
+        canManageCustomers: true,
+        canManageOrders: true,
+        canManageSales: true,
+        canManageReports: true,
+        canManageSettings: false,
+        canViewAuditLogs: false,
+        canManageNotifications: false,
+        canManageSystem: false,
+        canViewAllData: false,
+        canAccessDashboard: true
+    },
+    [ROLES.FARM_WORKER]: {
+        canManageUsers: false,
+        canManageRoles: false,
+        canManageProduction: false,
+        canManageInventory: false,
+        canManageCustomers: false,
+        canManageOrders: false,
+        canManageSales: false,
+        canManageReports: false,
+        canManageSettings: false,
+        canViewAuditLogs: false,
+        canManageNotifications: false,
+        canManageSystem: false,
+        canViewAllData: false,
+        canAccessDashboard: true
+    },
+    [ROLES.CUSTOMER]: {  
+        canManageUsers: false,
+        canManageRoles: false,
+        canManageProduction: false,
+        canManageInventory: false,
+        canManageCustomers: false,
+        canManageOrders: true,
+        canManageSales: false,
+        canManageReports: false,
+        canManageSettings: false,
+        canViewAuditLogs: false,
+        canManageNotifications: false,
+        canManageSystem: false,
+        canViewAllData: false,
+        canAccessDashboard: true
+    }
+};
+
+const AuthContext = createContext(null);
+
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {
@@ -14,126 +122,113 @@ export const useAuth = () => {
     return context;
 };
 
-// Auth Provider Component
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('token'));
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Initialize auth state on mount
-    useEffect(() => {
-        if (token) {
-            try {
-                const decoded = jwtDecode(token);
-                // Check if token is expired
-                if (decoded.exp * 1000 < Date.now()) {
-                    logout();
-                } else {
-                    setUser(decoded);
-                    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-                    // Get current user data
-                    getCurrentUser();
-                }
-            } catch (error) {
-                console.error('Invalid token:', error);
-                logout();
-            }
-        }
-        setLoading(false);
+    // Memoize logout to clear resources cleanly without re-render dependency issues
+    const logout = useCallback(() => {
+        localStorage.removeItem('token');
+        setToken(null);
+        setUser(null);
+        delete api.defaults.headers.common['Authorization'];
     }, []);
 
-    // Get current user data
-    const getCurrentUser = async () => {
+    // Get fresh user database profile values
+    const getCurrentUser = useCallback(async () => {
         try {
             const response = await api.get('/auth/me');
             if (response.data.status === 'success') {
                 setUser(response.data.data.user);
             }
-        } catch (error) {
-            console.error('Failed to get user data:', error);
-            if (error.response?.status === 401) {
+        } catch (err) {
+            console.error('Failed to get user data:', err);
+            if (err.response?.status === 401) {
                 logout();
             }
         }
-    };
+    }, [logout]);
 
-    // Login function
+    // Track initialization processes safely on mounting frames
+    useEffect(() => {
+        const initializeAuth = async () => {
+            if (token) {
+                try {
+                    const decoded = jwtDecode(token);
+                    if (decoded.exp * 1000 < Date.now()) {
+                        logout();
+                    } else {
+                        setUser(decoded);
+                        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+                        await getCurrentUser();
+                    }
+                } catch (err) {
+                    console.error('Invalid token:', err);
+                    logout();
+                }
+            }
+            setLoading(false);
+        };
+        initializeAuth();
+    }, [token, logout, getCurrentUser]);
+
     const login = async (email, password) => {
         try {
             setError(null);
             const response = await api.post('/auth/login', { email, password });
             
             if (response.data.status === 'success') {
-                const { token, user: userData } = response.data.data;
+                const { token: newToken, user: userData } = response.data.data;
                 
-                // Store token
-                localStorage.setItem('token', token);
-                setToken(token);
-                api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-                
-                // Set user
+                localStorage.setItem('token', newToken);
+                setToken(newToken);
+                api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
                 setUser(userData);
                 
                 return { success: true, user: userData };
             }
-        } catch (error) {
-            setError(error.response?.data?.message || 'Login failed');
-            return { success: false, error: error.response?.data?.message };
+        } catch (err) {
+            const errMsg = err.response?.data?.message || 'Login failed';
+            setError(errMsg);
+            return { success: false, error: errMsg };
         }
     };
 
-    // Register function (public)
     const register = async (userData) => {
         try {
             setError(null);
             const response = await api.post('/auth/public-register-customer', userData);
             
             if (response.data.status === 'success') {
-                const { token, user: userData } = response.data.data;
+                const { token: newToken, user: userDataObj } = response.data.data;
                 
-                // Store token
-                localStorage.setItem('token', token);
-                setToken(token);
-                api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+                localStorage.setItem('token', newToken);
+                setToken(newToken);
+                api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+                setUser(userDataObj);
                 
-                // Set user
-                setUser(userData);
-                
-                return { success: true, user: userData };
+                return { success: true, user: userDataObj };
             }
-        } catch (error) {
-            setError(error.response?.data?.message || 'Registration failed');
-            return { success: false, error: error.response?.data?.message };
+        } catch (err) {
+            const errMsg = err.response?.data?.message || 'Registration failed';
+            setError(errMsg);
+            return { success: false, error: errMsg };
         }
     };
 
-    // Logout function
-    const logout = () => {
-        localStorage.removeItem('token');
-        setToken(null);
-        setUser(null);
-        delete api.defaults.headers.common['Authorization'];
-    };
+    // FIXED: Standardize role string comparisons to match database structures exactly
+    const hasRole = (role) => user?.role === role;
+    const isAdmin = () => user?.role === ROLES.ADMIN;
+    const isCustomer = () => user?.role === ROLES.CUSTOMER;
+    const isAuthenticated = () => !!user && !!token;
 
-    // Check if user has a specific role
-    const hasRole = (role) => {
-        return user?.role === role;
-    };
-
-    // Check if user is admin
-    const isAdmin = () => {
-        return user?.role === 'admin';
-    };
-
-    // Check if user is customer
-    const isCustomer = () => {
-        return user?.role === 'customer';
-    };
-
-    // Check if user is authenticated
-    const isAuthenticated = () => {
-        return !!user && !!token;
+    // NEW UTILITY: Check permissions instantly inside dashboard or sidebar files
+    const hasPermission = (permissionName) => {
+        if (!user?.role) return false;
+        const permissions = ROLE_PERMISSIONS[user.role] || {};
+        return !!permissions[permissionName];
     };
 
     const value = {
@@ -148,14 +243,11 @@ export const AuthProvider = ({ children }) => {
         isAdmin,
         isCustomer,
         isAuthenticated,
+        hasPermission, // Exported to protect UI features
         getCurrentUser
     };
 
-    return (
-        <AuthContext.Provider value={value}>
-            {children}
-        </AuthContext.Provider>
-    );
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export default AuthContext;

@@ -3,7 +3,8 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
-  const { user, logout } = useAuth()
+  // Destructured hasPermission out of your updated context helper tools
+  const { logout, hasPermission } = useAuth()
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -11,72 +12,72 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
     navigate('/login')
   }
 
+  // Refactored configuration array mapped directly against permission keys
   const menuItems = [
     { 
       path: '/dashboard', 
       icon: 'fa-gauge-high', 
       label: 'Dashboard',
-      roles: ['Administrator', 'Production Supervisor', 'Inventory Officer', 'Sales Officer', 'Farm Worker', 'Customer']
+      permission: 'canAccessDashboard'
     },
     { 
       path: '/production', 
       icon: 'fa-seedling', 
       label: 'Production',
-      roles: ['Administrator', 'Production Supervisor']
+      permission: 'canManageProduction'
     },
     { 
       path: '/inventory', 
       icon: 'fa-warehouse', 
       label: 'Inventory',
-      roles: ['Administrator', 'Inventory Officer']
+      permission: 'canManageInventory'
     },
     { 
       path: '/customers', 
       icon: 'fa-users', 
       label: 'Customers',
-      roles: ['Administrator', 'Sales Officer']
+      permission: 'canManageCustomers'
     },
     { 
       path: '/orders', 
       icon: 'fa-cart-shopping', 
       label: 'Orders',
-      roles: ['Administrator', 'Sales Officer', 'Customer']
+      permission: 'canManageOrders'
     },
     { 
       path: '/sales', 
       icon: 'fa-coins', 
       label: 'Sales',
-      roles: ['Administrator', 'Sales Officer']
+      permission: 'canManageSales'
     },
     { 
       path: '/reports', 
       icon: 'fa-chart-bar', 
       label: 'Reports',
-      roles: ['Administrator', 'Production Supervisor', 'Inventory Officer', 'Sales Officer']
+      permission: 'canManageReports'
     },
     { 
       path: '/notifications', 
       icon: 'fa-bell', 
       label: 'Notifications',
-      roles: ['Administrator', 'Production Supervisor', 'Inventory Officer', 'Sales Officer', 'Farm Worker', 'Customer']
+      permission: 'canManageNotifications'
     },
     { 
       path: '/users', 
       icon: 'fa-user-gear', 
       label: 'Users',
-      roles: ['Administrator']
+      permission: 'canManageUsers'
     },
     { 
       path: '/settings', 
       icon: 'fa-gear', 
       label: 'Settings',
-      roles: ['Administrator']
+      permission: 'canManageSettings'
     },
   ]
 
-  const filteredItems = menuItems.filter(item => 
-    item.roles.includes(user?.role) || user?.role === 'Administrator'
-  )
+  // Filter items safely utilizing the permission matrix inside the context wrapper
+  const filteredItems = menuItems.filter(item => hasPermission(item.permission))
 
   return (
     <aside className={`fixed top-0 left-0 h-full bg-white border-r border-gray-200 transition-all duration-300 z-50 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
