@@ -7,7 +7,7 @@ const {
     getOrderReport,
     getSalesReport,
     getStockMovementReport,
-    getFinancialSummary,
+    getFinancialReport,
     getReportHistory,
     getReportById,
     deleteReport
@@ -75,9 +75,9 @@ router.get('/stock-movements',
     getStockMovementReport
 );
 
-router.get('/financial-summary', 
+router.get('/financial-report', 
     restrictTo(ROLES.ADMIN), 
-    getFinancialSummary
+    getFinancialReport 
 );
 
 module.exports = router;

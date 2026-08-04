@@ -482,9 +482,9 @@ class ReportService {
     }
 
     /**
-     * Generate Financial Summary Report
+     * Generate Financial Report
      */
-    async getFinancialSummary(startDate, endDate) {
+    async getFinancialReport(startDate, endDate) {
         // Get sales data
         const salesFilter = {};
         if (startDate) salesFilter.saleDate = { $gte: new Date(startDate) };

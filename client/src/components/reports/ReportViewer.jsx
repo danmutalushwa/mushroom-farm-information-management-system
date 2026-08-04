@@ -350,10 +350,10 @@ const ReportViewer = ({ report, data }) => {
             </>
         )}
 
-        {reportType === "Financial Summary" && (
+        {reportType === "Financial Report" && (
             <>
                 <h3 className="text-lg font-semibold mb-4">
-                  Financial Summary
+                  Financial Report
                 </h3>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -66,7 +66,7 @@ export const reportsAPI = {
   // Generate financial summary
   generateFinancial: (params) => {
     const { startDate, endDate } = params
-    return api.get(`/reports/financial-summary?startDate=${startDate}&endDate=${endDate}`)
+    return api.get(`/reports/financial-report?startDate=${startDate}&endDate=${endDate}`)
   },
 
   download(id) {
