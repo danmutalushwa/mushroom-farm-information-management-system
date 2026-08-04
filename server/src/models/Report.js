@@ -8,10 +8,20 @@ const { REPORT_TYPES } = require('../config/constants');
 const ReportSchema = new mongoose.Schema({
     reportNumber: {
         type: String,
-        required: [true, 'Report number is required'],
         unique: true,
         trim: true,
-        uppercase: true
+        uppercase: true,
+        default: () => {  
+            const date = new Date();
+            const year = date.getFullYear().toString().slice(-2);
+            const month = String(date.getMonth() +1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const random = Math.floor(Math.random() * 10000)
+                .toString()
+                .padStart(4, '0');
+            
+            return `RTP-${year}${month}${day}-${random}`;
+        }
     },
     reportType: {
         type: String,
@@ -110,19 +120,6 @@ const ReportSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Generate report number before saving
-ReportSchema.pre('save', function(next) {
-    if (this.isNew && !this.reportNumber) {
-        const date = new Date();
-        const year = date.getFullYear().toString().slice(-2);
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-        this.reportNumber = `RPT-${year}${month}${day}-${random}`;
-    }
-    next();
-});
-
 // Virtual for report age
 ReportSchema.virtual('age').get(function() {
     if (!this.generatedAt) return 0;
@@ -132,10 +129,9 @@ ReportSchema.virtual('age').get(function() {
 });
 
 // Index for faster queries
-ReportSchema.index({ reportNumber: 1 });
 ReportSchema.index({ reportType: 1 });
 ReportSchema.index({ generatedBy: 1 });
 ReportSchema.index({ generatedAt: -1 });
 ReportSchema.index({ isDeleted: 1 });
 
-module.exports = mongoose.model('Report', ReportSchema);
+module.exports = mongoose.models.Report || mongoose.model('Report', ReportSchema);

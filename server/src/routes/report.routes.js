@@ -7,10 +7,39 @@ const {
     getOrderReport,
     getSalesReport,
     getStockMovementReport,
-    getFinancialSummary
+    getFinancialSummary,
+    getReportHistory,
+    getReportById,
+    deleteReport
 } = require('../controllers/report.controller');
 const { protect, restrictTo } = require('../middlewares/auth.middleware');
 const { ROLES } = require('../config/roles');
+const { downloadReport } = require('../controllers/report.controller');
+
+router.get(
+    '/',
+    protect,
+    getReportHistory
+);
+
+router.get(
+    '/history/:id',
+    protect,
+    getReportById
+);
+
+router.get(
+    '/:id/download',
+    protect,
+    downloadReport
+);
+
+router.delete(
+    '/:id',
+    protect,
+    restrictTo(ROLES.ADMIN),
+    deleteReport
+);
 
 // All routes require authentication
 router.use(protect);

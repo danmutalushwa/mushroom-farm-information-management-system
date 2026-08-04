@@ -69,6 +69,16 @@ export const reportsAPI = {
     return api.get(`/reports/financial-summary?startDate=${startDate}&endDate=${endDate}`)
   },
 
+  download(id) {
+    return api.get(
+      `/reports/${id}/download`,
+      {
+        responseType: 'blob'
+      }
+    );
+  },
+
   // Delete report
   delete: (id) => api.delete(`/reports/${id}`)
+
 }
