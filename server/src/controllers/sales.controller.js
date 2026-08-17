@@ -10,10 +10,18 @@ const createSaleFromOrder = async (req, res, next) => {
     try {
         const { orderId } = req.params;
         
+        // Validate orderId
+        if (!orderId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Order ID is required'
+            });
+        }
+        
         // Normalize payload: handle both 'amountPaid' and 'amount' from client request
         const saleData = {
             ...req.body,
-            amountPaid: req.body.amountPaid || req.body.amount || 0
+            amountPaid: Number(req.body.amountPaid || req.body.amount || 0)
         };
         
         const result = await SalesService.createSaleFromOrder(orderId, saleData, req.user.id);
@@ -36,11 +44,28 @@ const recordPayment = async (req, res, next) => {
     try {
         const { saleId } = req.params;
         
+        // Validate saleId
+        if (!saleId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Sale ID is required'
+            });
+        }
+        
+        // Validate amount
+        const amount = Number(req.body.amount || req.body.amountPaid);
+        if (!amount || amount <= 0) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Valid payment amount is required'
+            });
+        }
+        
         // Ensure the service method receives the 'amount' field cleanly
         const paymentData = {
             saleId,
             ...req.body,
-            amount: req.body.amount || req.body.amountPaid
+            amount: amount
         };
         
         const result = await SalesService.recordPayment(paymentData, req.user.id);
@@ -62,6 +87,14 @@ const recordPayment = async (req, res, next) => {
 const generateInvoice = async (req, res, next) => {
     try {
         const { saleId } = req.params;
+        
+        if (!saleId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Sale ID is required'
+            });
+        }
+        
         const invoice = await SalesService.generateInvoice(saleId, req.user.id);
         
         res.status(201).json({
@@ -82,9 +115,13 @@ const getAllSales = async (req, res, next) => {
     try {
         const { page = 1, limit = 10, paymentStatus, customerId, search, startDate, endDate } = req.query;
         
+        // Validate and sanitize pagination
+        const pageNum = Math.max(1, parseInt(page) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10));
+        
         const result = await SalesService.getAllSales(
-            parseInt(page),
-            parseInt(limit),
+            pageNum,
+            limitNum,
             { paymentStatus, customerId, search, startDate, endDate }
         );
         
@@ -106,6 +143,14 @@ const getAllSales = async (req, res, next) => {
 const getSaleById = async (req, res, next) => {
     try {
         const { id } = req.params;
+        
+        if (!id) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Sale ID is required'
+            });
+        }
+        
         const sale = await SalesService.getSaleById(id);
         
         res.status(200).json({
@@ -124,6 +169,14 @@ const getSaleById = async (req, res, next) => {
 const getSaleByNumber = async (req, res, next) => {
     try {
         const { saleNumber } = req.params;
+        
+        if (!saleNumber) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Sale number is required'
+            });
+        }
+        
         const sale = await SalesService.getSaleByNumber(saleNumber);
         
         res.status(200).json({
@@ -144,10 +197,20 @@ const getSalePayments = async (req, res, next) => {
         const { saleId } = req.params;
         const { page = 1, limit = 10 } = req.query;
         
+        if (!saleId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Sale ID is required'
+            });
+        }
+        
+        const pageNum = Math.max(1, parseInt(page) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10));
+        
         const result = await SalesService.getSalePayments(
             saleId,
-            parseInt(page),
-            parseInt(limit)
+            pageNum,
+            limitNum
         );
         
         res.status(200).json({
@@ -168,6 +231,14 @@ const getSalePayments = async (req, res, next) => {
 const getSaleInvoice = async (req, res, next) => {
     try {
         const { saleId } = req.params;
+        
+        if (!saleId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Sale ID is required'
+            });
+        }
+        
         const invoice = await SalesService.getSaleInvoice(saleId);
         
         res.status(200).json({
@@ -197,6 +268,49 @@ const getSalesStatistics = async (req, res, next) => {
     }
 };
 
+/**
+ * DEBUG: Get detailed sales statistics for troubleshooting
+ * This endpoint helps identify why total sales might be showing zero
+ */
+const getSalesStatisticsDebug = async (req, res, next) => {
+    try {
+        const debugInfo = await SalesService.getSalesStatisticsDebug();
+        
+        res.status(200).json({
+            status: 'debug',
+            message: 'Debug information for sales statistics',
+            data: debugInfo
+        });
+    } catch (error) {
+        logger.error('Get sales statistics debug error:', error.message);
+        next(error);
+    }
+};
+
+/**
+ * Get sales summary (simplified version for dashboard)
+ */
+const getSalesSummary = async (req, res, next) => {
+    try {
+        const stats = await SalesService.getSalesStatistics();
+        
+        // Return simplified summary for dashboard
+        res.status(200).json({
+            status: 'success',
+            data: {
+                totalRevenue: stats.summary.totalRevenue,
+                totalSalesCount: stats.summary.totalSalesCount,
+                totalCollected: stats.summary.totalCollected,
+                totalOutstanding: stats.summary.totalOutstanding,
+                paymentStatuses: stats.statuses
+            }
+        });
+    } catch (error) {
+        logger.error('Get sales summary error:', error.message);
+        next(error);
+    }
+};
+
 module.exports = {
     createSaleFromOrder,
     recordPayment,
@@ -206,5 +320,7 @@ module.exports = {
     getSaleByNumber,
     getSalePayments,
     getSaleInvoice,
-    getSalesStatistics
+    getSalesStatistics,
+    getSalesStatisticsDebug,  
+    getSalesSummary           
 };

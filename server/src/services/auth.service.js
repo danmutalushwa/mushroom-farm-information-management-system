@@ -36,6 +36,19 @@ class AuthService {
             throw new AppError('User with this email or phone number already exists', 400);
         }
 
+        // Only one Farm Manager can exist in the system
+        if (role === ROLES.FARM_MANAGER) {
+            const existingFarmManager = await User.findOne({
+                role: ROLES.FARM_MANAGER
+            });
+            if (existingFarmManager) {
+                throw new AppError(
+                    'A Farm Manager already exists. Deactivate or manage the existing Farm Manager instead.',
+                    400
+                );
+            }
+        }
+
         // Create user
         const user = await User.create({
             fullName,

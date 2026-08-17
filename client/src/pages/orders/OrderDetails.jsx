@@ -24,6 +24,7 @@ const OrderDetails = () => {
     try {
       setLoading(true)
       const response = await orderAPI.getById(id)
+      console.log('ORDER DETAILS RESPONSE:', response.data)
       setOrder(response.data.data)
       setSelectedStatus(response.data.data.status)
       setSelectedPayment(response.data.data.paymentStatus)
@@ -177,7 +178,7 @@ const OrderDetails = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {order.items.map((item, index) => (
+                  {(order.items || []).map((item, index) => (
                     <tr key={index} className="border-b last:border-0">
                       <td className="py-2 font-medium">{item.productName}</td>
                       <td className="py-2 text-gray-500 font-mono text-xs">{item.productCode}</td>

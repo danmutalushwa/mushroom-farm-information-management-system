@@ -50,7 +50,15 @@ const SalesList = () => {
   const fetchStatistics = async () => {
     try {
       const response = await salesAPI.getStatistics()
-      setStatistics(response.data.data)
+      const data = response.data.data
+
+      setStatistics({
+        totalSales: data.summary?.totalSalesCount || 0,
+        totalRevenue: data.summary?.totalRevenue || 0,
+        pendingPayments: data.statuses?.Pending || 0,
+        completedSales: data.statuses?.Paid || 0
+
+      })
     } catch (error) {
       console.error('Failed to fetch statistics:', error)
     }

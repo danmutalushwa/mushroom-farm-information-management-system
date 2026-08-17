@@ -3,6 +3,7 @@
  */
 const ROLES = {
     ADMIN: 'Administrator',
+    FARM_MANAGER:'Farm Manager',
     PRODUCTION_SUPERVISOR: 'Production Supervisor',
     INVENTORY_OFFICER: 'Inventory Officer',
     SALES_OFFICER: 'Sales Officer',
@@ -29,6 +30,22 @@ const ROLE_PERMISSIONS = {
         canManageSystem: true,
         canViewAllData: true,
         canAccessDashboard: true
+    },
+    [ROLES.FARM_MANAGER]: {
+    canManageUsers: false,
+    canManageRoles: false,
+    canManageProduction: true,
+    canManageInventory: true,
+    canManageCustomers: true,
+    canManageOrders: true,
+    canManageSales: true,
+    canManageReports: true,
+    canManageSettings: false,
+    canViewAuditLogs: false,
+    canManageNotifications: false,
+    canManageSystem: false,
+    canViewAllData: true,
+    canAccessDashboard: true
     },
     [ROLES.PRODUCTION_SUPERVISOR]: {
         canManageUsers: false,

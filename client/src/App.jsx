@@ -14,10 +14,12 @@ import ForgotPassword from './pages/auth/ForgotPassword'
 
 // Dashboard Pages
 import AdminDashboard from './pages/dashboard/AdminDashboard'
+import FarmManagerDashboard from './pages/dashboard/FarmManagerDashboard'
 import ProductionDashboard from './pages/dashboard/ProductionDashboard'
 import InventoryDashboard from './pages/dashboard/InventoryDashboard'
 import SalesDashboard from './pages/dashboard/SalesDashboard'
 import FarmWorkerDashboard from './pages/dashboard/FarmWorkerDashboard'
+
 
 // Production Pages
 import BatchList from './pages/production/BatchList'
@@ -82,39 +84,40 @@ function App() {
           
           {/* Dashboards - Dynamic workspace routing via DashboardRouter */}
           <Route path="dashboard" element={<DashboardRouter />} />
-          <Route path="dashboard/production" element={<ProtectedRoute allowedRoles={['Administrator', 'Production Supervisor']}><ProductionDashboard /></ProtectedRoute>} />
-          <Route path="dashboard/inventory" element={<ProtectedRoute allowedRoles={['Administrator', 'Inventory Officer']}><InventoryDashboard /></ProtectedRoute>} />
+          <Route path="dashboard/farm-manager" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager']}><FarmManagerDashboard /></ProtectedRoute>} />
+          <Route path="dashboard/production" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager', 'Production Supervisor']}><ProductionDashboard /></ProtectedRoute>} />
+          <Route path="dashboard/inventory" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager','Inventory Officer']}><InventoryDashboard /></ProtectedRoute>} />
           <Route path="dashboard/sales" element={<ProtectedRoute allowedRoles={['Administrator', 'Sales Officer', 'Customer']}><SalesDashboard /></ProtectedRoute>} />
           <Route path="dashboard/worker" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Worker']}><FarmWorkerDashboard /></ProtectedRoute>} />
           
           {/* Production Management */}
-          <Route path="production" element={<ProtectedRoute allowedRoles={['Administrator', 'Production Supervisor']}><BatchList /></ProtectedRoute>} />
-          <Route path="production/create" element={<ProtectedRoute allowedRoles={['Administrator', 'Production Supervisor']}><CreateBatch /></ProtectedRoute>} />
-          <Route path="production/:id" element={<ProtectedRoute allowedRoles={['Administrator', 'Production Supervisor']}><BatchDetails /></ProtectedRoute>} />
+          <Route path="production" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager','Production Supervisor']}><BatchList /></ProtectedRoute>} />
+          <Route path="production/create" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager', 'Production Supervisor']}><CreateBatch /></ProtectedRoute>} />
+          <Route path="production/:id" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager','Production Supervisor']}><BatchDetails /></ProtectedRoute>} />
           
           {/* Inventory Control */}
-          <Route path="inventory" element={<ProtectedRoute allowedRoles={['Administrator', 'Inventory Officer']}><InventoryList /></ProtectedRoute>} />
-          <Route path="inventory/create" element={<ProtectedRoute allowedRoles={['Administrator', 'Inventory Officer']}><CreateItem /></ProtectedRoute>} />
-          <Route path="inventory/:id" element={<ProtectedRoute allowedRoles={['Administrator', 'Inventory Officer']}><ItemDetails /></ProtectedRoute>} />
-          <Route path="inventory/low-stock" element={<ProtectedRoute allowedRoles={['Administrator', 'Inventory Officer']}><LowStockAlert /></ProtectedRoute>} />
+          <Route path="inventory" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager','Inventory Officer']}><InventoryList /></ProtectedRoute>} />
+          <Route path="inventory/create" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager','Inventory Officer']}><CreateItem /></ProtectedRoute>} />
+          <Route path="inventory/:id" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager','Inventory Officer']}><ItemDetails /></ProtectedRoute>} />
+          <Route path="inventory/low-stock" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager','Inventory Officer']}><LowStockAlert /></ProtectedRoute>} />
           
           {/* Customer CRM */}
-          <Route path="customers" element={<ProtectedRoute allowedRoles={['Administrator', 'Sales Officer']}><CustomerList /></ProtectedRoute>} />
-          <Route path="customers/create" element={<ProtectedRoute allowedRoles={['Administrator', 'Sales Officer']}><CreateCustomer /></ProtectedRoute>} />
-          <Route path="customers/:id" element={<ProtectedRoute allowedRoles={['Administrator', 'Sales Officer']}><CustomerDetails /></ProtectedRoute>} />
+          <Route path="customers" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager','Sales Officer']}><CustomerList /></ProtectedRoute>} />
+          <Route path="customers/create" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager','Sales Officer']}><CreateCustomer /></ProtectedRoute>} />
+          <Route path="customers/:id" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager','Sales Officer']}><CustomerDetails /></ProtectedRoute>} />
 
           {/* Orders Hub */}
-          <Route path="orders" element={<OrderList />} />
-          <Route path="orders/create" element={<CreateOrder />} />
-          <Route path="orders/:id" element={<OrderDetails />} />
+          <Route path="orders" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager', 'Sales Officer', 'Customer']}><OrderList /></ProtectedRoute>} />
+          <Route path="orders/create" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager', 'Sales Officer', 'Customer']}><CreateOrder /></ProtectedRoute>} />
+          <Route path="orders/:id" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager', 'Sales Officer', 'Customer']}><OrderDetails /></ProtectedRoute>} />
 
           {/* Sales Operations */}
-          <Route path="sales" element={<ProtectedRoute allowedRoles={['Administrator', 'Sales Officer']}><SalesList /></ProtectedRoute>} />
-          <Route path="sales/create" element={<ProtectedRoute allowedRoles={['Administrator', 'Sales Officer']}><CreateSale /></ProtectedRoute>} />
-          <Route path="sales/:id" element={<ProtectedRoute allowedRoles={['Administrator', 'Sales Officer']}><SaleDetails /></ProtectedRoute>} />
+          <Route path="sales" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager','Sales Officer']}><SalesList /></ProtectedRoute>} />
+          <Route path="sales/create" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager','Sales Officer']}><CreateSale /></ProtectedRoute>} />
+          <Route path="sales/:id" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager','Sales Officer']}><SaleDetails /></ProtectedRoute>} />
 
           {/* Analytics & Reports */}
-          <Route path="reports" element={<ProtectedRoute allowedRoles={['Administrator', 'Production Supervisor', 'Inventory Officer', 'Sales Officer']}><ReportList /></ProtectedRoute>} />
+          <Route path="reports" element={<ProtectedRoute allowedRoles={['Administrator', 'Farm Manager','Production Supervisor', 'Inventory Officer', 'Sales Officer']}><ReportList /></ProtectedRoute>} />
           <Route path="reports/schedule" element={<ProtectedRoute allowedRoles={['Administrator']}><ReportSchedule /></ProtectedRoute>} />
           <Route path="reports/templates" element={<ProtectedRoute allowedRoles={['Administrator']}><ReportTemplates /></ProtectedRoute>} />
           

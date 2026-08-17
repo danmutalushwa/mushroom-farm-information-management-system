@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usersAPI } from '../../api/users'
-import { ROLES } from '../../constants'
+import { USER_CREATION_ROLES } from '../../constants'
 
 const CreateUser = () => {
   const navigate = useNavigate()
@@ -128,7 +128,7 @@ const CreateUser = () => {
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none bg-white"
               required
             >
-              {Object.values(ROLES).map((role) => (
+              {USER_CREATION_ROLES.map((role) => ( 
                 <option key={role} value={role}>{role}</option>
               ))}
             </select>

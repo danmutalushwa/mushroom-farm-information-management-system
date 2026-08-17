@@ -24,7 +24,7 @@ router.get('/statistics', getOrderStatistics);
 // Main order routes
 router.route('/')
     .get(getAllOrders)
-    .post(restrictTo(ROLES.ADMIN, ROLES.SALES_OFFICER), createOrder);
+    .post(restrictTo(ROLES.ADMIN, ROLES.FARM_MANAGER,ROLES.SALES_OFFICER, ROLES.CUSTOMER), createOrder);
 
 router.get('/number/:orderNumber', getOrderByNumber);
 
@@ -38,19 +38,19 @@ router.route('/:id')
 
 // Order status update
 router.put('/:id/status', 
-    restrictTo(ROLES.ADMIN, ROLES.SALES_OFFICER), 
+    restrictTo(ROLES.ADMIN, ROLES.FARM_MANAGER, ROLES.SALES_OFFICER), 
     updateOrderStatus
 );
 
 // Payment status update
 router.put('/:id/payment', 
-    restrictTo(ROLES.ADMIN, ROLES.SALES_OFFICER), 
+    restrictTo(ROLES.ADMIN, ROLES.FARM_MANAGER, ROLES.SALES_OFFICER), 
     updatePaymentStatus
 );
 
 // Cancel order
 router.put('/:id/cancel', 
-    restrictTo(ROLES.ADMIN, ROLES.SALES_OFFICER), 
+    restrictTo(ROLES.ADMIN, ROLES.FARM_MANAGER, ROLES.SALES_OFFICER), 
     cancelOrder
 );
 

@@ -9,12 +9,21 @@ export const USER_STATUS = {
 
 export const ROLES = {
   ADMIN: 'Administrator',
+  FARM_MANAGER:'Farm Manager',
   PRODUCTION_SUPERVISOR: 'Production Supervisor',
   INVENTORY_OFFICER: 'Inventory Officer',
   SALES_OFFICER: 'Sales Officer',
   FARM_WORKER: 'Farm Worker',
   CUSTOMER: 'Customer'
 }
+
+export const USER_CREATION_ROLES = [
+  ROLES.FARM_MANAGER,
+  ROLES.PRODUCTION_SUPERVISOR,
+  ROLES.INVENTORY_OFFICER,
+  ROLES.SALES_OFFICER,
+  ROLES.FARM_WORKER 
+]
 
 // ============================================
 // ORDER CONSTANTS
@@ -172,7 +181,7 @@ export const REPORT_TYPES = [
   'Customer Report',
   'Order Report',
   'Sales Report',
-  'Financial Summary',
+  'Financial Report',
   'Stock Movement Report'
 ]
 

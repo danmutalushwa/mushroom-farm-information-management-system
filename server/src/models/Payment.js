@@ -72,7 +72,7 @@ const PaymentSchema = new mongoose.Schema({
 });
 
 // Generate payment number before saving
-PaymentSchema.pre('save', function(next) {
+PaymentSchema.pre('validate', function(next) {
     if (this.isNew && !this.paymentNumber) {
         const date = new Date();
         const year = date.getFullYear().toString().slice(-2);

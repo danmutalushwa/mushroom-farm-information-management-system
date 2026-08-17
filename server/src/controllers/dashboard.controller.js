@@ -74,6 +74,24 @@ const getSalesDashboard = async (req, res, next) => {
 };
 
 /**
+ * Get Farm Manager Dashboard
+ */
+const getFarmManagerDashboard = async (req, res, next) => {
+    try {
+        const data = await DashboardService.getFarmManagerDashboard();
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Farm manager dashboard data retrieved successfully',
+            data
+        });
+    }catch (error) {
+        logger.error('Get farm manager dashboard error:', error.message);
+        next(error);
+    }
+};
+
+/**
  * Get Farm Worker Dashboard
  */
 const getFarmWorkerDashboard = async (req, res, next) => {
@@ -114,6 +132,7 @@ module.exports = {
     getProductionDashboard,
     getInventoryDashboard,
     getSalesDashboard,
+    getFarmManagerDashboard,
     getFarmWorkerDashboard,   
     getCustomerDashboard      
 };

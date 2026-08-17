@@ -450,12 +450,7 @@ const ReportList = () => {
                           View
                         </button>
 
-                        <button
-                          className="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
-                        >
-                          <i className="fas fa-download mr-1"></i>
-                          Download
-                        </button>
+                        
 
                         <button
                           onClick={() => {

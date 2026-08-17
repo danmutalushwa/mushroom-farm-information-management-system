@@ -5,6 +5,7 @@ import { jwtDecode } from 'jwt-decode';
 // 1. Centralized role definitions mirroring your backend precisely
 export const ROLES = {
     ADMIN: 'Administrator',
+    FARM_MANAGER: 'Farm Manager',
     PRODUCTION_SUPERVISOR: 'Production Supervisor',
     INVENTORY_OFFICER: 'Inventory Officer',
     SALES_OFFICER: 'Sales Officer',
@@ -29,6 +30,22 @@ export const ROLE_PERMISSIONS = {
         canManageSystem: true,
         canViewAllData: true,
         canAccessDashboard: true
+    },
+    [ROLES.FARM_MANAGER]: {
+    canManageUsers: false,
+    canManageRoles: false,
+    canManageProduction: true,
+    canManageInventory: true,
+    canManageCustomers: true,
+    canManageOrders: true,
+    canManageSales: true,
+    canManageReports: true,
+    canManageSettings: false,
+    canViewAuditLogs: false,
+    canManageNotifications: true,
+    canManageSystem: false,
+    canViewAllData: true,
+    canAccessDashboard: true
     },
     [ROLES.PRODUCTION_SUPERVISOR]: {
         canManageUsers: false,

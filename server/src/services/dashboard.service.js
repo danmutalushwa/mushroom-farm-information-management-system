@@ -64,6 +64,122 @@ class DashboardService {
             lowStockItems: lowStockItems || []
         };
     }
+    /**
+     * Get Farm Manager Dashboard
+     */
+    async getFarmManagerDashboard() {
+        const [
+            totalBatches,
+            activeBatches,
+            completedBatches,
+            readyForHarvest,
+            totalHarvest,
+            totalInventoryItems,
+            lowStockItems,
+            totalOrders,
+            pendingOrders,
+            totalSales,
+            totalRevenue,
+            recentBatches,
+            recentOrders,
+            recentSales
+        ]= await Promise.all([
+            //Production
+            ProductionBatch.countDocuments(),
+
+            productionBatch.countDocuments({
+                status: {$in: ['In Progress', 'Planned']}
+            }),
+            
+            ProductionBatch.countDocuments({
+                status: 'Completed'
+            }),
+
+            ProductionBatch.countDocuments({
+                status: 'Ready for Harvest'
+            }),
+
+            ProductionBatch.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: '$totalHarvest'}
+                    }
+                }
+            ]),
+
+            // Inventory
+            InventoryItem.countDocuments({
+                isActive: true
+            }),
+
+            InventoryItem.find({
+                isActive: true,
+                $exper: {
+                    $lte: ['$quantity', '$minimumStockLevel']
+                }
+            }),
+
+            // Orders
+            Order.countDocuments({
+                status: 'Pending'
+            }),
+
+            // Sales
+            sale.countDocuments(),
+
+            Sale.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        total: {$sum: '$totalAmount'}
+                    }
+                }
+            ]),
+
+            //Recent production
+            ProductionBatch.find({})
+            .sort({createdAt: -1})
+            .limit(5)
+            .populate('createdBy','fullName'),
+
+            // Recent Orders
+            Order.find({})
+                .sort({createdAt: -1})
+                .limit(5)
+                .populate('customerId', 'fullName'),
+            
+            // Recent Sales
+            Sale.find({})
+              .sort({createdAt: -1})
+              .limit(5)
+              .populate('customerId', 'fullName')
+        ]);
+
+        return {
+            summary: {
+                totalBatches,
+                activeBatches,
+                completedBatches,
+                readyForHarvest,
+                totalHarvest: totalHarvest[0]?.total||0,
+
+                totalInventoryItems,
+                lowStockCount: lowStockItems.length,
+
+                totalOrders,
+                pendingOrders,
+
+                totalSales,
+                totalRevenue: totalRevenue[0]?.total || 0
+            },
+
+            recentBatches: recentBatches || [],
+            recentOrders: recentOrders || [],
+            recentSales: recentSales || [],
+            lowStockItems: lowStockItems || []
+        };
+    }
 
     /**
      * Get production supervisor dashboard

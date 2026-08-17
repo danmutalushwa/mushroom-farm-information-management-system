@@ -6,6 +6,8 @@ import ProductionDashboard from '../pages/dashboard/ProductionDashboard';
 import InventoryDashboard from '../pages/dashboard/InventoryDashboard';
 import SalesDashboard from '../pages/dashboard/SalesDashboard';
 import FarmWorkerDashboard from '../pages/dashboard/FarmWorkerDashboard';
+import FarmManagerDashboard from '../pages/dashboard/FarmManagerDashboard';
+import CustomerDashboard from '../pages/dashboard/CustomerDashboard';
 
 const DashboardRouter = () => {
   const { user } = useAuth();
@@ -18,8 +20,11 @@ const DashboardRouter = () => {
     case 'Inventory Officer':
       return <InventoryDashboard />;
     case 'Sales Officer':
-    case 'Customer':
       return <SalesDashboard />;
+    case 'Customer':
+      return <CustomerDashboard />;
+    case 'Farm Manager':
+      return <FarmManagerDashboard />
     case 'Farm Worker':
       return <FarmWorkerDashboard />;
     default:

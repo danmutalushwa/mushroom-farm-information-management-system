@@ -26,10 +26,10 @@ const validateOrder = (data) => {
             if (!item.productId) {
                 errors.push(`Item ${index + 1}: Product ID is required`);
             }
-            if (!item.quantity || item.quantity < 1) {
+            if (item.quantity === undefined || item.quantity === null || item.quantity < 1) {
                 errors.push(`Item ${index + 1}: Quantity must be at least 1`);
             }
-            if (!item.unitPrice || item.unitPrice < 0) {
+            if (item.unitPrice === undefined || item.unitPrice === null || item.unitPrice < 0) {
                 errors.push(`Item ${index + 1}: Unit price cannot be negative`);
             }
         });

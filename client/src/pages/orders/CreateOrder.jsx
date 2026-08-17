@@ -84,7 +84,7 @@ const CreateOrder = () => {
 
   const selectCustomer = (customer) => {
     setSelectedCustomer(customer)
-    setFormData({ ...formData, customerId: customer._id })
+    setFormData({ ...formData, customerId: customer._id || customer.id })
     setSearchCustomer('')
     setCustomerSearchResults([])
   }
@@ -168,8 +168,10 @@ const CreateOrder = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    const validatedCustomerId = selectedCustomer?._id || selectedCustomer?.id || formData.customerId;
     
-    if (!selectedCustomer) {
+    if (!validatedCustomerId) {
       setError('Please select a customer')
       return
     }
@@ -186,21 +188,22 @@ const CreateOrder = () => {
       const { subtotal, tax, discount, total } = calculateTotals()
       
       const orderData = {
-        customerId: selectedCustomer._id,
+        customerId: validatedCustomerId,
         customerName: selectedCustomer.fullName,
         customerPhone: selectedCustomer.phoneNumber,
         items: orderItems.map(item => ({
+          inventoryItem: item.productId,
           productId: item.productId,
           productName: item.productName,
           productCode: item.productCode,
           quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          totalPrice: item.totalPrice
+          unitPrice: parseFloat(item.unitPrice) || 0,
+          totalPrice: parseFloat(item.totalPrice) || 0
         })),
-        subtotal,
-        tax,
-        discount,
-        totalAmount: total,
+        subtotal: parseFloat(subtotal) || 0,
+        tax: parseFloat(formData.tax) || 0,
+        discount: parseFloat(formData.discount) || 0,
+        totalAmount: parseFloat(total) || 0,
         expectedDeliveryDate: formData.expectedDeliveryDate ? new Date(formData.expectedDeliveryDate).toISOString() : null,
         deliveryAddress: formData.deliveryAddress || selectedCustomer.address,
         notes: formData.notes

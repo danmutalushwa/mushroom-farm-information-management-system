@@ -78,6 +78,7 @@ const UserList = () => {
   const getRoleColor = (role) => {
     const colors = {
       'Administrator': 'bg-purple-100 text-purple-700',
+      'Farm Manager': 'bg-emerald-100 text-emerald-700',
       'Production Supervisor': 'bg-blue-100 text-blue-700',
       'Inventory Officer': 'bg-yellow-100 text-yellow-700',
       'Sales Officer': 'bg-green-100 text-green-700',

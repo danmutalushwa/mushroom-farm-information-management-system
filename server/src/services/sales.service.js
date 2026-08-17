@@ -7,16 +7,8 @@ const { AppError } = require('../middlewares/error.middleware');
 const logger = require('../utils/logger');
 const { validateSale, validatePayment, validateInvoice } = require('../validators/sales.validator');
 
-/**
- * Sales Service
- * Handles all sales, payment, and invoicing business logic
- */
 class SalesService {
-    /**
-     * Create a sale from a completed order
-     */
     async createSaleFromOrder(orderId, saleData, userId) {
-        // Get order
         const order = await Order.findById(orderId);
         if (!order) {
             throw new AppError('Order not found', 404);
@@ -26,13 +18,11 @@ class SalesService {
             throw new AppError('Order must be completed before creating a sale', 400);
         }
 
-        // Check if sale already exists for this order
         const existingSale = await Sale.findOne({ orderId });
         if (existingSale) {
             throw new AppError('A sale already exists for this order', 400);
         }
 
-        // Validate sale data
         const validation = validateSale({
             orderId,
             items: order.items,
@@ -44,7 +34,8 @@ class SalesService {
             throw new AppError('Validation failed', 400, validation.errors);
         }
 
-        // Create sale initialized at base zero values
+        const totalAmount = Number(order.totalAmount) || 0;
+        
         let sale = await Sale.create({
             orderId: order._id,
             orderNumber: order.orderNumber,
@@ -59,14 +50,13 @@ class SalesService {
                 unitPrice: item.unitPrice,
                 totalPrice: item.totalPrice
             })),
-            subtotal: order.subtotal,
-            tax: order.tax,
-            discount: order.discount,
-            totalAmount: order.totalAmount,
+            subtotal: Number(order.subtotal) || 0,
+            tax: Number(order.tax) || 0,
+            discount: Number(order.discount) || 0,
+            totalAmount: totalAmount,
             amountPaid: 0,
-            balanceDue: order.totalAmount,
+            balanceDue: totalAmount,
             paymentStatus: 'Pending',
-
             saleDate: saleData.saleDate || new Date(),
             recordedBy: userId,
             notes: saleData.notes || null
@@ -80,72 +70,58 @@ class SalesService {
             recordedBy: userId
         });
 
-        // If payment was made, record it
-        if (saleData.amountPaid && saleData.amountPaid > 0) {
-            const paymentResult = await this.recordPayment({
-                saleId: sale._id,
-                amount: saleData.amountPaid,
-                paymentMethod: saleData.paymentMethod || 'Cash',
-                notes: 'Initial payment for sale'
-            }, userId);
-
-            // Re-assign updated sale object values from paymentResult
-            sale = paymentResult.sale;
+        if (saleData.amountPaid && Number(saleData.amountPaid) > 0) {
+            const paymentAmount = Math.min(Number(saleData.amountPaid), totalAmount);
+            if (paymentAmount > 0) {
+                const paymentResult = await this.recordPayment({
+                    saleId: sale._id,
+                    amount: paymentAmount,
+                    paymentMethod: saleData.paymentMethod || 'Cash',
+                    notes: 'Initial payment for sale'
+                }, userId);
+                sale = paymentResult.sale;
+            }
         }
 
-        // Generate invoice using the freshly updated sale record values
         const invoice = await this.generateInvoice(sale._id, userId);
 
-        return {
-            sale,
-            invoice
-        };
+        return { sale, invoice };
     }
 
-    /**
-     * Record a payment for a sale
-     */
     async recordPayment(paymentData, userId) {
-        // Validate payment
         const validation = validatePayment(paymentData);
         if (!validation.valid) {
             throw new AppError('Validation failed', 400, validation.errors);
         }
 
-        // Get sale
         const sale = await Sale.findById(paymentData.saleId);
         if (!sale) {
             throw new AppError('Sale not found', 404);
         }
 
-        // Debug information 
-        logger.info('Sale payment debug', {
-            saleId: sale._id,
-            saleNumber: sale.saleNumber,
-            totalAmount: sale.totalAmount,
-            amountPaid: sale.amountPaid,
-            balanceDue: sale.balanceDue,
-            paymentStatus: sale.paymentStatus
-        });
-
-        // DEFENSIVE MATH FIX: Normalize the balance calculation using Math.max
-        const remainingBalance = Math.max(0, sale.totalAmount - sale.amountPaid);
+        const totalAmount = Number(sale.totalAmount) || 0;
+        const currentPaid = Number(sale.amountPaid) || 0;
+        const remainingBalance = Math.max(0, totalAmount - currentPaid);
         
         if (remainingBalance === 0) {
             throw new AppError('This sale is already fully paid. Balance due is 0.', 400);
         }
 
-        if (paymentData.amount > remainingBalance) {
-            throw new AppError(`Payment amount (${paymentData.amount}) exceeds remaining balance (${remainingBalance})`, 400);
+        const paymentAmount = Number(paymentData.amount);
+        if (paymentAmount > remainingBalance) {
+            throw new AppError(
+                `Payment amount (${paymentAmount}) exceeds remaining balance (${remainingBalance}). ` +
+                `Please enter an amount up to ${remainingBalance}.`, 
+                400
+            );
         }
 
-        // Create payment
         const payment = await Payment.create({
             saleId: sale._id,
             saleNumber: sale.saleNumber,
             customerId: sale.customerId,
             customerName: sale.customerName,
-            amount: paymentData.amount,
+            amount: paymentAmount,
             paymentMethod: paymentData.paymentMethod,
             paymentStatus: 'Paid',
             referenceNumber: paymentData.referenceNumber || null,
@@ -154,19 +130,18 @@ class SalesService {
             recordedBy: userId
         });
 
-        // Update sale totals cleanly
-        sale.amountPaid += paymentData.amount;
-        sale.balanceDue = Math.max(0, sale.totalAmount - sale.amountPaid);
+        sale.amountPaid = Math.min(totalAmount, currentPaid + paymentAmount);
+        sale.balanceDue = Math.max(0, totalAmount - sale.amountPaid);
         
-        // Update payment status explicitly
-        if (sale.amountPaid >= sale.totalAmount) {
+        if (sale.amountPaid >= totalAmount) {
             sale.paymentStatus = 'Paid';
-        } else {
+        } else if (sale.amountPaid > 0) {
             sale.paymentStatus = 'Partially Paid';
+        } else {
+            sale.paymentStatus = 'Pending';
         }
         await sale.save();
 
-        // Update invoice matching status safely
         await Invoice.findOneAndUpdate(
             { saleId: sale._id },
             {
@@ -181,35 +156,24 @@ class SalesService {
         logger.info(`Payment recorded for sale: ${sale.saleNumber}`, {
             paymentId: payment._id,
             paymentNumber: payment.paymentNumber,
-            amount: paymentData.amount,
+            amount: paymentAmount,
             saleId: sale._id,
             recordedBy: userId
         });
 
-        return {
-            payment,
-            sale
-        };
+        return { payment, sale };
     }
 
-    /**
-     * Get all sales with pagination and filters
-     */
     async getAllSales(page = 1, limit = 10, filters = {}) {
         const skip = (page - 1) * limit;
-
-        // Build dynamic query filters
         const filter = {};
 
         if (filters.paymentStatus) {
             filter.paymentStatus = filters.paymentStatus;
         }
-
         if (filters.customerId) {
             filter.customerId = filters.customerId;
         }
-
-        // Search by customer name, phone number, or order number
         if (filters.search) {
             filter.$or = [
                 { customerName: { $regex: filters.search, $options: 'i' } },
@@ -217,8 +181,6 @@ class SalesService {
                 { orderNumber: { $regex: filters.search, $options: 'i' } }
             ];
         }
-
-        // Filter by date range
         if (filters.startDate && filters.endDate) {
             filter.saleDate = {
                 $gte: new Date(filters.startDate),
@@ -226,7 +188,6 @@ class SalesService {
             };
         }
 
-        // Execute query with parallel aggregation counting
         const [sales, total] = await Promise.all([
             Sale.find(filter)
                 .sort({ saleDate: -1 })
@@ -246,33 +207,27 @@ class SalesService {
         };
     }
 
-    /**
-     * Generate invoice for a sale
-     */
     async generateInvoice(saleId, userId) {
-        // Validate
         const validation = validateInvoice({ saleId });
         if (!validation.valid) {
             throw new AppError('Validation failed', 400, validation.errors);
         }
 
-        // Get sale
         const sale = await Sale.findById(saleId)
             .populate('customerId', 'fullName phoneNumber email address');
         if (!sale) {
             throw new AppError('Sale not found', 404);
         }
 
-        // Check if invoice already exists
         const existingInvoice = await Invoice.findOne({ saleId });
         if (existingInvoice) {
             return existingInvoice;
         }
 
-        // Get customer details
         const customer = sale.customerId;
+        const totalAmount = Number(sale.totalAmount) || 0;
+        const amountPaid = Math.min(Number(sale.amountPaid) || 0, totalAmount);
 
-        // Create invoice
         const invoice = await Invoice.create({
             saleId: sale._id,
             saleNumber: sale.saleNumber,
@@ -284,20 +239,20 @@ class SalesService {
             customerEmail: customer.email || null,
             customerAddress: customer.address || null,
             items: sale.items,
-            subtotal: sale.subtotal,
-            tax: sale.tax,
-            taxRate: 18, // Default tax rate
-            discount: sale.discount,
-            totalAmount: sale.totalAmount,
-            amountPaid: sale.amountPaid,
-            balanceDue: sale.balanceDue,
+            subtotal: Number(sale.subtotal) || 0,
+            tax: Number(sale.tax) || 0,
+            taxRate: 18,
+            discount: Number(sale.discount) || 0,
+            totalAmount: totalAmount,
+            amountPaid: amountPaid,
+            balanceDue: Math.max(0, totalAmount - amountPaid),
             invoiceDate: new Date(),
             isPaid: sale.paymentStatus === 'Paid',
             generatedBy: userId,
             notes: sale.notes || null
         });
 
-                logger.info(`Invoice generated for sale: ${sale.saleNumber}`, {
+        logger.info(`Invoice generated for sale: ${sale.saleNumber}`, {
             invoiceId: invoice._id,
             invoiceNumber: invoice.invoiceNumber,
             saleId: sale._id,
@@ -307,35 +262,22 @@ class SalesService {
         return invoice;
     }
 
-    /**
-     * Get sale by ID
-     */
     async getSaleById(id) {
         const sale = await Sale.findById(id);
-
         if (!sale) {
             throw new AppError('Sale record not found', 404);
         }
-
         return sale;
     }
 
-    /**
-     * Get sale by business number
-     */
     async getSaleByNumber(saleNumber) {
         const sale = await Sale.findOne({ saleNumber });
-
         if (!sale) {
             throw new AppError(`Sale #${saleNumber} not found`, 404);
         }
-
         return sale;
     }
 
-    /**
-     * Get all payments recorded for a single sale
-     */
     async getSalePayments(saleId, page = 1, limit = 10) {
         const skip = (page - 1) * limit;
         const query = { saleId };
@@ -359,74 +301,132 @@ class SalesService {
         };
     }
 
-    /**
-     * Get invoice document associated with a sale
-     */
     async getSaleInvoice(saleId) {
         const invoice = await Invoice.findOne({ saleId });
-
         if (!invoice) {
             throw new AppError('Invoice not found for this sale', 404);
         }
-
         return invoice;
     }
 
     /**
-     * Generate sales statistics dashboard metrics
+     * Generate sales statistics - FIXED for overpayments
      */
     async getSalesStatistics() {
-        const stats = await Sale.aggregate([
-            {
-                $group: {
-                    _id: null,
-                    totalRevenue: { $sum: '$totalAmount' },
-                    totalCollected: { $sum: '$amountPaid' },
-                    totalOutstanding: { $sum: '$balanceDue' },
-                    countSales: { $sum: 1 }
+        const allSales = await Sale.find({});
+        
+        logger.info('📊 Total sales in database:', { count: allSales.length });
+        
+        if (allSales.length === 0) {
+            return {
+                summary: {
+                    totalRevenue: 0,
+                    totalCollected: 0,
+                    totalOutstanding: 0,
+                    totalSalesCount: 0
+                },
+                statuses: {
+                    Paid: 0,
+                    'Partially Paid': 0,
+                    Pending: 0
                 }
-            }
-        ]);
+            };
+        }
 
-        const statusCounts = await Sale.aggregate([
-            {
-                $group: {
-                    _id: '$paymentStatus',
-                    count: { $sum: 1 }
-                }
-            }
-        ]);
-
-        const formattedStatuses = statusCounts.reduce(
-            (acc, curr) => {
-                acc[curr._id] = curr.count;
-                return acc;
-            },
-            {
-                Paid: 0,
-                'Partially Paid': 0,
-                Pending: 0
-            }
-        );
-
-        const mainStats = stats[0] || {
-            totalRevenue: 0,
-            totalCollected: 0,
-            totalOutstanding: 0,
-            countSales: 0
+        let totalRevenue = 0;
+        let totalCollected = 0;
+        let totalOutstanding = 0;
+        const statusCounts = {
+            'Paid': 0,
+            'Partially Paid': 0,
+            'Pending': 0
         };
+
+        allSales.forEach(sale => {
+            const total = Number(sale.totalAmount) || 0;
+            const paid = Number(sale.amountPaid) || 0;
+            
+            // CRITICAL FIX: Cap collected amount at total amount
+            const collected = Math.min(paid, total);
+            const outstanding = Math.max(0, total - collected);
+            
+            totalRevenue += total;
+            totalCollected += collected;
+            totalOutstanding += outstanding;
+            
+            const status = sale.paymentStatus || 'Pending';
+            if (statusCounts[status] !== undefined) {
+                statusCounts[status]++;
+            } else {
+                statusCounts[status] = 1;
+            }
+        });
+
+        logger.info('💰 Calculated totals:', {
+            totalRevenue,
+            totalCollected,
+            totalOutstanding,
+            totalSales: allSales.length
+        });
 
         return {
             summary: {
-                totalRevenue: mainStats.totalRevenue,
-                totalCollected: mainStats.totalCollected,
-                totalOutstanding: mainStats.totalOutstanding,
-                totalSalesCount: mainStats.countSales
+                totalRevenue: totalRevenue,
+                totalCollected: totalCollected,
+                totalOutstanding: totalOutstanding,
+                totalSalesCount: allSales.length
             },
-            statuses: formattedStatuses
+            statuses: statusCounts
+        };
+    }
+
+    /**
+     * DEBUG: Get detailed statistics
+     */
+    async getSalesStatisticsDebug() {
+        const allSales = await Sale.find({});
+        
+        let totalRevenue = 0;
+        let totalPaid = 0;
+        let totalOutstanding = 0;
+        
+        const salesWithOverpayment = [];
+        
+        allSales.forEach(sale => {
+            const total = Number(sale.totalAmount) || 0;
+            const paid = Number(sale.amountPaid) || 0;
+            const balance = Number(sale.balanceDue) || 0;
+            
+            totalRevenue += total;
+            totalPaid += paid;
+            totalOutstanding += balance;
+            
+            if (paid > total) {
+                salesWithOverpayment.push({
+                    saleNumber: sale.saleNumber,
+                    totalAmount: total,
+                    amountPaid: paid,
+                    overpayment: paid - total
+                });
+            }
+        });
+        
+        return {
+            totalSales: allSales.length,
+            calculated: {
+                totalRevenue: totalRevenue,
+                totalPaid: totalPaid,
+                totalOutstanding: totalOutstanding,
+                correctedCollected: Math.min(totalPaid, totalRevenue),
+                correctedOutstanding: Math.max(0, totalRevenue - Math.min(totalPaid, totalRevenue))
+            },
+            issues: {
+                salesWithOverpayment: salesWithOverpayment,
+                count: salesWithOverpayment.length
+            },
+            sampleSale: allSales[0] || null
         };
     }
 }
 
-module.exports = SalesService; 
-
+module.exports = SalesService;
