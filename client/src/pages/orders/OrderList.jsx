@@ -8,12 +8,14 @@ const OrderList = () => {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [statistics, setStatistics] = useState(null)
+
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
     total: 0,
     pages: 0
   })
+
   const [filters, setFilters] = useState({
     status: '',
     paymentStatus: '',
@@ -25,9 +27,13 @@ const OrderList = () => {
     fetchStatistics()
   }, [filters, pagination.page])
 
+  // =========================
+  // FETCH ORDERS
+  // =========================
   const fetchOrders = async () => {
     try {
       setLoading(true)
+
       const response = await orderAPI.getAll({
         page: pagination.page,
         limit: pagination.limit,
@@ -35,8 +41,9 @@ const OrderList = () => {
         paymentStatus: filters.paymentStatus,
         search: filters.search
       })
-      
+
       setOrders(response.data.data || [])
+
       setPagination({
         ...pagination,
         total: response.data.pagination?.total || 0,
@@ -49,55 +56,142 @@ const OrderList = () => {
     }
   }
 
+  // =========================
+  // FETCH ORDER STATISTICS
+  // =========================
   const fetchStatistics = async () => {
+    console.log('🔥 ORDER fetchStatistics() STARTED')
+
     try {
+      console.log('🔥 Calling orderAPI.getStatistics()...')
+
       const response = await orderAPI.getStatistics()
-      setStatistics(response.data.data)
+
+      console.log('🔥 ORDER Statistics API response:', response)
+      console.log('🔥 ORDER Response data:', response.data)
+
+      // Backend response:
+      // {
+      //   status: 'success',
+      //   data: {
+      //     statistics: {
+      //       totalOrders,
+      //       pendingOrders,
+      //       completedOrders,
+      //       cancelledOrders,
+      //       totalRevenue
+      //     }
+      //   }
+      // }
+
+      const data = response.data.data.statistics
+
+      console.log('🔥 ORDER Statistics object:', data)
+      console.log('🔥 Total orders:', data?.totalOrders)
+      console.log('🔥 Pending orders:', data?.pendingOrders)
+      console.log('🔥 Completed orders:', data?.completedOrders)
+      console.log('🔥 Cancelled orders:', data?.cancelledOrders)
+      console.log('🔥 Total revenue:', data?.totalRevenue)
+
+      setStatistics(data)
     } catch (error) {
-      console.error('Failed to fetch statistics:', error)
+      console.error('🔥 ORDER Failed to fetch statistics:', error)
+      console.error(
+        '🔥 ORDER Error response:',
+        error.response?.data
+      )
+      console.error(
+        '🔥 ORDER Error status:',
+        error.response?.status
+      )
     }
   }
 
+  // =========================
+  // FILTER CHANGE
+  // =========================
   const handleFilterChange = (e) => {
     const { name, value } = e.target
-    setFilters({ ...filters, [name]: value })
-    setPagination({ ...pagination, page: 1 })
+
+    setFilters({
+      ...filters,
+      [name]: value
+    })
+
+    setPagination({
+      ...pagination,
+      page: 1
+    })
   }
 
+  // =========================
+  // SEARCH
+  // =========================
   const handleSearch = (e) => {
     e.preventDefault()
     fetchOrders()
   }
 
+  // =========================
+  // PAGINATION
+  // =========================
   const handlePageChange = (newPage) => {
-    setPagination({ ...pagination, page: newPage })
+    setPagination({
+      ...pagination,
+      page: newPage
+    })
   }
 
+  // =========================
+  // CANCEL ORDER
+  // =========================
   const handleCancelOrder = async (id, orderNumber) => {
-    const reason = prompt('Please enter cancellation reason:')
+    const reason = prompt(
+      `Please enter cancellation reason for ${orderNumber}:`
+    )
+
     if (reason) {
       try {
         await orderAPI.cancel(id, { reason })
+
+        // Refresh orders after cancellation
         fetchOrders()
+
+        // Refresh statistics as well
+        fetchStatistics()
       } catch (error) {
+        console.error('Failed to cancel order:', error)
         alert('Failed to cancel order')
       }
     }
   }
 
+  // =========================
+  // FORMAT CURRENCY
+  // =========================
   const formatCurrency = (amount) => {
-    return `RWF ${amount?.toLocaleString() || 0}`
+    return `RWF ${Number(amount || 0).toLocaleString()}`
   }
 
   return (
     <div>
-      {/* Header */}
+
+      {/* =========================
+          HEADER
+      ========================= */}
       <div className="gradient-header rounded-2xl p-6 mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Orders</h1>
-            <p className="text-gray-600 mt-1">Manage customer orders</p>
+            <h1 className="text-2xl font-bold text-gray-800">
+              Orders
+            </h1>
+
+            <p className="text-gray-600 mt-1">
+              Manage customer orders
+            </p>
           </div>
+
           <Link
             to="/orders/create"
             className="mt-4 md:mt-0 inline-flex items-center gap-2 px-4 py-2 gradient-bg text-white rounded-lg hover:opacity-90 transition font-medium"
@@ -105,34 +199,79 @@ const OrderList = () => {
             <i className="fas fa-plus"></i>
             New Order
           </Link>
+
         </div>
       </div>
 
-      {/* Statistics */}
+
+      {/* =========================
+          STATISTICS
+      ========================= */}
       {statistics && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+
+          {/* Total Orders */}
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-            <p className="text-sm text-gray-500">Total Orders</p>
-            <p className="text-2xl font-bold text-gray-800">{statistics.totalOrders || 0}</p>
+            <p className="text-sm text-gray-500">
+              Total Orders
+            </p>
+
+            <p className="text-2xl font-bold text-gray-800">
+              {statistics.totalOrders || 0}
+            </p>
           </div>
+
+
+          {/* Pending Orders */}
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-            <p className="text-sm text-gray-500">Pending</p>
-            <p className="text-2xl font-bold text-yellow-600">{statistics.pendingOrders || 0}</p>
+            <p className="text-sm text-gray-500">
+              Pending
+            </p>
+
+            <p className="text-2xl font-bold text-yellow-600">
+              {statistics.pendingOrders || 0}
+            </p>
           </div>
+
+
+          {/* Completed Orders */}
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-            <p className="text-sm text-gray-500">Completed</p>
-            <p className="text-2xl font-bold text-green-600">{statistics.completedOrders || 0}</p>
+            <p className="text-sm text-gray-500">
+              Completed
+            </p>
+
+            <p className="text-2xl font-bold text-green-600">
+              {statistics.completedOrders || 0}
+            </p>
           </div>
+
+
+          {/* Total Revenue */}
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-            <p className="text-sm text-gray-500">Total Revenue</p>
-            <p className="text-2xl font-bold text-emerald-600">{formatCurrency(statistics.totalRevenue)}</p>
+            <p className="text-sm text-gray-500">
+              Total Revenue
+            </p>
+
+            <p className="text-2xl font-bold text-emerald-600">
+              {formatCurrency(statistics.totalRevenue)}
+            </p>
           </div>
+
         </div>
       )}
 
-      {/* Filters */}
+
+      {/* =========================
+          FILTERS
+      ========================= */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
-        <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3">
+
+        <form
+          onSubmit={handleSearch}
+          className="flex flex-col md:flex-row gap-3"
+        >
+
+          {/* Search */}
           <div className="flex-1">
             <input
               type="text"
@@ -143,6 +282,9 @@ const OrderList = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
             />
           </div>
+
+
+          {/* Order Status */}
           <div className="w-full md:w-48">
             <select
               name="status"
@@ -150,14 +292,23 @@ const OrderList = () => {
               onChange={handleFilterChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none bg-white"
             >
-              <option value="">All Status</option>
+              <option value="">
+                All Status
+              </option>
+
               {ORDER_STATUS_OPTIONS.map((status) => (
-                <option key={status.value} value={status.value}>
+                <option
+                  key={status.value}
+                  value={status.value}
+                >
                   {status.label}
                 </option>
               ))}
             </select>
           </div>
+
+
+          {/* Payment Status */}
           <div className="w-full md:w-48">
             <select
               name="paymentStatus"
@@ -165,14 +316,23 @@ const OrderList = () => {
               onChange={handleFilterChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none bg-white"
             >
-              <option value="">All Payment</option>
+              <option value="">
+                All Payment
+              </option>
+
               {PAYMENT_STATUS_OPTIONS.map((status) => (
-                <option key={status.value} value={status.value}>
+                <option
+                  key={status.value}
+                  value={status.value}
+                >
                   {status.label}
                 </option>
               ))}
             </select>
           </div>
+
+
+          {/* Search Button */}
           <button
             type="submit"
             className="px-6 py-2 gradient-bg text-white rounded-lg hover:opacity-90 transition font-medium"
@@ -180,122 +340,265 @@ const OrderList = () => {
             <i className="fas fa-search mr-2"></i>
             Search
           </button>
+
         </form>
+
       </div>
 
-      {/* Table */}
+
+      {/* =========================
+          ORDERS TABLE
+      ========================= */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+
         {loading ? (
+
           <div className="flex items-center justify-center h-64">
             <i className="fas fa-spinner fa-spin text-3xl text-emerald-600"></i>
           </div>
+
         ) : orders.length === 0 ? (
+
           <div className="text-center py-12">
+
             <i className="fas fa-shopping-cart text-4xl text-gray-300 mb-4"></i>
-            <p className="text-gray-500">No orders found</p>
+
+            <p className="text-gray-500">
+              No orders found
+            </p>
+
             <Link
               to="/orders/create"
               className="inline-block mt-4 text-emerald-600 hover:underline font-medium"
             >
               Create your first order
             </Link>
+
           </div>
+
         ) : (
+
           <div className="overflow-x-auto">
+
             <table className="w-full">
+
               <thead className="bg-gray-50">
+
                 <tr className="text-left text-gray-600 text-sm">
-                  <th className="px-6 py-3 font-medium">Order #</th>
-                  <th className="px-6 py-3 font-medium">Customer</th>
-                  <th className="px-6 py-3 font-medium">Items</th>
-                  <th className="px-6 py-3 font-medium">Total</th>
-                  <th className="px-6 py-3 font-medium">Payment</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
-                  <th className="px-6 py-3 font-medium">Date</th>
-                  <th className="px-6 py-3 font-medium text-right">Actions</th>
+
+                  <th className="px-6 py-3 font-medium">
+                    Order #
+                  </th>
+
+                  <th className="px-6 py-3 font-medium">
+                    Customer
+                  </th>
+
+                  <th className="px-6 py-3 font-medium">
+                    Items
+                  </th>
+
+                  <th className="px-6 py-3 font-medium">
+                    Total
+                  </th>
+
+                  <th className="px-6 py-3 font-medium">
+                    Payment
+                  </th>
+
+                  <th className="px-6 py-3 font-medium">
+                    Status
+                  </th>
+
+                  <th className="px-6 py-3 font-medium">
+                    Date
+                  </th>
+
+                  <th className="px-6 py-3 font-medium text-right">
+                    Actions
+                  </th>
+
                 </tr>
+
               </thead>
+
+
               <tbody className="divide-y divide-gray-100">
+
                 {orders.map((order) => (
-                  <tr key={order._id} className="hover:bg-gray-50 transition">
+
+                  <tr
+                    key={order._id}
+                    className="hover:bg-gray-50 transition"
+                  >
+
+                    {/* Order Number */}
                     <td className="px-6 py-3">
+
                       <Link
                         to={`/orders/${order._id}`}
                         className="font-medium text-emerald-600 hover:underline font-mono text-sm"
                       >
                         {order.orderNumber}
                       </Link>
+
                     </td>
+
+
+                    {/* Customer */}
                     <td className="px-6 py-3">
-                      <div className="font-medium text-gray-800">{order.customerName}</div>
-                      <div className="text-xs text-gray-500">{order.customerPhone}</div>
+
+                      <div className="font-medium text-gray-800">
+                        {order.customerName}
+                      </div>
+
+                      <div className="text-xs text-gray-500">
+                        {order.customerPhone}
+                      </div>
+
                     </td>
-                    <td className="px-6 py-3 text-center">{order.totalItems || order.items?.length || 0}</td>
+
+
+                    {/* Items */}
+                    <td className="px-6 py-3 text-center">
+                      {order.totalItems || order.items?.length || 0}
+                    </td>
+
+
+                    {/* Total */}
                     <td className="px-6 py-3 font-bold text-gray-800">
                       {formatCurrency(order.totalAmount)}
                     </td>
+
+
+                    {/* Payment */}
                     <td className="px-6 py-3">
-                      <StatusBadge status={order.paymentStatus} />
+                      <StatusBadge
+                        status={order.paymentStatus}
+                      />
                     </td>
+
+
+                    {/* Order Status */}
                     <td className="px-6 py-3">
-                      <StatusBadge status={order.status} />
+                      <StatusBadge
+                        status={order.status}
+                      />
                     </td>
+
+
+                    {/* Date */}
                     <td className="px-6 py-3 text-sm text-gray-600">
-                      {new Date(order.orderDate || order.createdAt).toLocaleDateString()}
+                      {new Date(
+                        order.orderDate || order.createdAt
+                      ).toLocaleDateString()}
                     </td>
+
+
+                    {/* Actions */}
                     <td className="px-6 py-3 text-right">
+
                       <Link
                         to={`/orders/${order._id}`}
                         className="text-emerald-600 hover:text-emerald-700 mr-3"
                       >
                         <i className="fas fa-eye"></i>
                       </Link>
-                      {order.status !== 'Completed' && order.status !== 'Cancelled' && (
-                        <button
-                          onClick={() => handleCancelOrder(order._id, order.orderNumber)}
-                          className="text-red-500 hover:text-red-700"
-                          title="Cancel Order"
-                        >
-                          <i className="fas fa-times"></i>
-                        </button>
-                      )}
+
+
+                      {order.status !== 'Completed' &&
+                        order.status !== 'Cancelled' && (
+
+                          <button
+                            onClick={() =>
+                              handleCancelOrder(
+                                order._id,
+                                order.orderNumber
+                              )
+                            }
+                            className="text-red-500 hover:text-red-700"
+                            title="Cancel Order"
+                          >
+                            <i className="fas fa-times"></i>
+                          </button>
+
+                        )}
+
                     </td>
+
                   </tr>
+
                 ))}
+
               </tbody>
+
             </table>
+
           </div>
+
         )}
 
-        {/* Pagination */}
+
+        {/* =========================
+            PAGINATION
+        ========================= */}
         {!loading && orders.length > 0 && (
+
           <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+
             <span className="text-sm text-gray-500">
-              Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
-              {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} orders
+
+              Showing{' '}
+              {(pagination.page - 1) * pagination.limit + 1}
+              {' '}to{' '}
+              {Math.min(
+                pagination.page * pagination.limit,
+                pagination.total
+              )}
+              {' '}of{' '}
+              {pagination.total} orders
+
             </span>
+
+
             <div className="flex gap-2">
+
               <button
-                onClick={() => handlePageChange(pagination.page - 1)}
+                onClick={() =>
+                  handlePageChange(pagination.page - 1)
+                }
                 disabled={pagination.page === 1}
                 className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
               >
                 <i className="fas fa-chevron-left"></i>
               </button>
+
+
               <span className="px-4 py-1 bg-emerald-50 text-emerald-600 rounded-lg font-medium">
                 {pagination.page} / {pagination.pages}
               </span>
+
+
               <button
-                onClick={() => handlePageChange(pagination.page + 1)}
-                disabled={pagination.page === pagination.pages}
+                onClick={() =>
+                  handlePageChange(pagination.page + 1)
+                }
+                disabled={
+                  pagination.page === pagination.pages
+                }
                 className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
               >
                 <i className="fas fa-chevron-right"></i>
               </button>
+
             </div>
+
           </div>
+
         )}
+
       </div>
+
     </div>
   )
 }
